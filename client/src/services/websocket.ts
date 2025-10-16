@@ -1,4 +1,3 @@
-import { io, Socket } from 'socket.io-client';
 import { 
   JoinResponse,
   UserJoinedEvent,
@@ -9,76 +8,127 @@ import {
 } from '../types';
 
 class WebSocketService {
-  private socket: Socket | null = null;
+  private socket: WebSocket | null = null;
   private callbacks: Map<string, Function[]> = new Map();
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+  private reconnectInterval = 3000;
 
   connect(): void {
-    this.socket = io('http://localhost:3001', {
-      transports: ['websocket'],
-      autoConnect: true,
-    });
+    try {
+      // 使用环境变量配置WebSocket地址，支持虚拟机部署
+      const wsUrl = process.env.REACT_APP_WS_URL || 'ws://localhost:3001/ws';
+      this.socket = new WebSocket(wsUrl);
 
-    this.socket.on('connect', () => {
-      console.log('WebSocket连接成功');
-      this.emit('connected');
-    });
+      this.socket.onopen = () => {
+        console.log('WebSocket连接成功');
+        this.reconnectAttempts = 0;
+        this.emit('connected');
+      };
 
-    this.socket.on('disconnect', () => {
-      console.log('WebSocket连接断开');
-      this.emit('disconnected');
-    });
+      this.socket.onclose = () => {
+        console.log('WebSocket连接断开');
+        this.emit('disconnected');
+        this.handleReconnect();
+      };
 
-    this.socket.on('joined', (data: JoinResponse) => {
-      this.emit('joined', data);
-    });
+      this.socket.onerror = (error) => {
+        console.error('WebSocket错误:', error);
+        this.emit('error', { message: 'WebSocket连接错误' });
+      };
 
-    this.socket.on('user_joined', (data: UserJoinedEvent) => {
-      this.emit('user_joined', data);
-    });
+      this.socket.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          this.handleMessage(message);
+        } catch (error) {
+          console.error('解析消息失败:', error);
+        }
+      };
+    } catch (error) {
+      console.error('WebSocket连接失败:', error);
+      this.emit('error', { message: 'WebSocket连接失败' });
+    }
+  }
 
-    this.socket.on('user_left', (data: UserLeftEvent) => {
-      this.emit('user_left', data);
-    });
+  private handleMessage(message: any): void {
+    switch (message.type) {
+      case 'joined':
+        this.emit('joined', message.data);
+        break;
+      case 'user_joined':
+        this.emit('user_joined', message.data);
+        break;
+      case 'user_left':
+        this.emit('user_left', message.data);
+        break;
+      case 'new_message':
+        this.emit('new_message', message.data);
+        break;
+      case 'user_list':
+        this.emit('user_list', message.data);
+        break;
+      case 'error':
+        this.emit('error', message.data);
+        break;
+      case 'pong':
+        this.emit('pong');
+        break;
+      default:
+        console.log('未知消息类型:', message.type);
+    }
+  }
 
-    this.socket.on('new_message', (data: NewMessageEvent) => {
-      this.emit('new_message', data);
-    });
-
-    this.socket.on('user_list', (data: UserListEvent) => {
-      this.emit('user_list', data);
-    });
-
-    this.socket.on('error', (data: ErrorEvent) => {
-      this.emit('error', data);
-    });
-
-    this.socket.on('pong', () => {
-      this.emit('pong');
-    });
+  private handleReconnect(): void {
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.reconnectAttempts++;
+      console.log(`尝试重连 (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
+      setTimeout(() => {
+        this.connect();
+      }, this.reconnectInterval);
+    } else {
+      console.error('重连失败，已达到最大重连次数');
+      this.emit('error', { message: '连接失败，请刷新页面重试' });
+    }
   }
 
   disconnect(): void {
     if (this.socket) {
-      this.socket.disconnect();
+      this.socket.close();
       this.socket = null;
     }
   }
 
   join(nickname?: string): void {
-    if (this.socket) {
-      this.socket.emit('join', { nickname });
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      this.send({
+        type: 'join',
+        data: { nickname }
+      });
     }
   }
 
   sendMessage(content: string): void {
-    if (this.socket) {
-      this.socket.emit('send_message', { content });
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      this.send({
+        type: 'send_message',
+        data: { content }
+      });
     }
   }
 
   ping(): void {
-    if (this.socket) {
-      this.socket.emit('ping');
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      this.send({
+        type: 'ping',
+        data: null
+      });
+    }
+  }
+
+  private send(message: any): void {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      this.socket.send(JSON.stringify(message));
     }
   }
 
@@ -108,7 +158,7 @@ class WebSocketService {
   }
 
   isConnected(): boolean {
-    return this.socket?.connected || false;
+    return this.socket?.readyState === WebSocket.OPEN;
   }
 }
 
