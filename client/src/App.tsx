@@ -162,9 +162,27 @@ const App: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [nickname, setNickname] = useState('');
+  const [currentTime, setCurrentTime] = useState(new Date());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // 从localStorage恢复用户状态
+    const savedUser = localStorage.getItem('pixel-chat-user');
+    const savedNickname = localStorage.getItem('pixel-chat-nickname');
+    
+    if (savedUser && savedNickname) {
+      try {
+        const user = JSON.parse(savedUser);
+        setCurrentUser(user);
+        setNickname(savedNickname);
+        setShowWelcome(false);
+      } catch (error) {
+        console.error('恢复用户状态失败:', error);
+        localStorage.removeItem('pixel-chat-user');
+        localStorage.removeItem('pixel-chat-nickname');
+      }
+    }
+
     // 连接WebSocket
     websocketService.connect();
 
@@ -184,10 +202,19 @@ const App: React.FC = () => {
       setMessages(data.messages);
       setShowWelcome(false);
       setError(null);
+      
+      // 保存用户状态到localStorage
+      localStorage.setItem('pixel-chat-user', JSON.stringify(data.user));
+      localStorage.setItem('pixel-chat-nickname', nickname);
     });
 
     websocketService.on('new_message', (data: NewMessageEvent) => {
-      setMessages(prev => [...prev, data.message]);
+      setMessages(prev => {
+        // 避免重复消息
+        const exists = prev.some(msg => msg.id === data.message.id);
+        if (exists) return prev;
+        return [...prev, data.message];
+      });
     });
 
     websocketService.on('user_list', (data: UserListEvent) => {
@@ -201,12 +228,21 @@ const App: React.FC = () => {
     return () => {
       websocketService.disconnect();
     };
-  }, []);
+  }, [nickname]);
 
   useEffect(() => {
     // 自动滚动到最新消息
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    // 实时更新时间
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   const handleJoin = () => {
     if (isConnected) {
@@ -220,8 +256,20 @@ const App: React.FC = () => {
     }
   };
 
+  const handleLogout = () => {
+    // 清除用户状态
+    localStorage.removeItem('pixel-chat-user');
+    localStorage.removeItem('pixel-chat-nickname');
+    setCurrentUser(null);
+    setMessages([]);
+    setUsers([]);
+    setShowWelcome(true);
+    setNickname('');
+    websocketService.disconnect();
+  };
+
   const formatTime = () => {
-    return new Date().toLocaleTimeString('zh-CN', {
+    return currentTime.toLocaleTimeString('zh-CN', {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit'
@@ -236,6 +284,24 @@ const App: React.FC = () => {
           {isConnected ? `[在线: ${users.length}]` : '[离线]'}
         </StatusItem>
         <StatusItem>{formatTime()}</StatusItem>
+        {currentUser && (
+          <StatusItem>
+            <button 
+              onClick={handleLogout}
+              style={{
+                background: 'transparent',
+                border: '1px solid #F85149',
+                color: '#F85149',
+                padding: '4px 8px',
+                fontSize: '8px',
+                fontFamily: 'inherit',
+                cursor: 'pointer'
+              }}
+            >
+              [退出]
+            </button>
+          </StatusItem>
+        )}
       </StatusBar>
 
       <AnimatePresence>
