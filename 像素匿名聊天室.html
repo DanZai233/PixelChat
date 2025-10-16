@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>像素匿名聊天室</title>
+  <!-- Required CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/3/3.1.1/iconify.min.js"></script>
+  <!-- Google 像素字体 -->
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  
+  <style>
+    /* 基础重置 */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      background: #000;
+      color: #e0e0e0;
+      font-family: 'Press Start 2P', monospace;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    /* 主容器 */
+    .terminal-container {
+      width: 1440px;
+      height: 100%;
+      background: #0a0e27;
+      border: 1px solid #1a1f3a;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    
+    /* 顶部状态栏 */
+    .status-bar {
+      height: 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 16px;
+      border-bottom: 1px solid #1a1f3a;
+      color: #00ff41;
+    }
+    
+    /* 主内容区 */
+    .content {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+    
+    /* 聊天区 */
+    .chat-area {
+      width: 60%;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid #1a1f3a;
+    }
+    
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column-reverse;
+    }
+    
+    .msg-bubble {
+      background: rgba(0, 0, 0, 0.8);
+      margin-bottom: 12px;
+      padding: 12px;
+      border-left: 2px solid;
+      max-width: 80%;
+      animation: type 1s steps(40);
+    }
+    
+    @keyframes type {
+      from { max-width: 0; }
+    }
+    
+    .user-msg { border-color: #8338ec; }
+    .other-msg { border-color: #ffbe0b; }
+    
+    .msg-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    
+    .pixel-avatar {
+      width: 24px;
+      height: 24px;
+      margin-right: 10px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+    }
+    
+    .pixel-dot {
+      width: 100%;
+      height: 100%;
+    }
+    
+    .username {
+      margin-right: 10px;
+      font-weight: bold;
+    }
+    
+    .timestamp {
+      color: #666;
+      font-size: 10px;
+    }
+    
+    /* 侧边栏 */
+    .sidebar {
+      width: 25%;
+      padding: 16px;
+    }
+    
+    .user-list {
+      margin-bottom: 30px;
+    }
+    
+    .user-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #1a1f3a;
+    }
+    
+    .room-info {
+      background: rgba(0, 0, 0, 0.5);
+      padding: 16px;
+      border: 1px solid #00ff41;
+    }
+    
+    /* 输入区 */
+    .input-area {
+      height: 80px;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      border-top: 1px solid #1a1f3a;
+      gap: 15px;
+    }
+    
+    .terminal-input {
+      background: #000;
+      color: #00ff41;
+      border: 2px solid #00ff41;
+      font-family: 'Press Start 2P', monospace;
+      padding: 12px;
+      flex: 1;
+      height: 48px;
+      caret-color: transparent;
+      position: relative;
+    }
+    
+    .terminal-input::after {
+      content: '▋';
+      animation: blink 1s infinite;
+      color: #00ff41;
+    }
+    
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+    
+    .send-btn {
+      background: #00ff41;
+      color: #0a0e27;
+      border: 0;
+      padding: 12px 24px;
+      font-family: 'Press Start 2P', monospace;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .send-btn:hover {
+      box-shadow: 0 0 10px #00ff41;
+      transform: translateY(-2px);
+    }
+    
+    .hint {
+      font-size: 10px;
+      color: #666;
+    }
+    
+    /* 自定义滚动条 */
+    .chat-messages::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    .chat-messages::-webkit-scrollbar-track {
+      background: #0a0e27;
+    }
+    
+    .chat-messages::-webkit-scrollbar-thumb {
+      background: #00ff41;
+    }
+    
+    /* 色板 */
+    .color-green { color: #00ff41; }
+    .color-blue { color: #00d9ff; }
+    .color-pink { color: #ff006e; }
+    .color-yellow { color: #ffbe0b; }
+    .color-purple { color: #8338ec; }
+    
+    /* 像素配色 */
+    .pixel-black { background: #000; }
+    .pixel-green { background: #00ff41; }
+    .pixel-blue { background: #00d9ff; }
+    .pixel-pink { background: #ff006e; }
+    .pixel-purple { background: #8338ec; }
+    .pixel-yellow { background: #ffbe0b; }
+  </style>
+</head>
+<body>
+  <div class="terminal-container">
+    <!-- 顶部状态栏 -->
+    <div class="status-bar">
+      <div>ANON_CHAT_v1.0</div>
+      <div>[ONLINE: 5]</div>
+      <div>23:58:47 UTC</div>
+    </div>
+    
+    <!-- 主内容区 -->
+    <div class="content">
+      <!-- 聊天区域 -->
+      <div class="chat-area">
+        <div class="chat-messages">
+          <!-- 消息示例 -->
+          <div class="msg-bubble other-msg">
+            <div class="msg-header">
+              <div class="pixel-avatar">
+                <div class="pixel-dot pixel-blue"></div>
+                <div class="pixel-dot pixel-blue"></div>
+                <div class="pixel-dot pixel-pink"></div>
+                <div class="pixel-dot pixel-pink"></div>
+                <div class="pixel-dot pixel-blue"></div>
+                <div class="pixel-dot pixel-blue"></div>
+                <div class="pixel-dot pixel-pink"></div>
+                <div class="pixel-dot pixel-pink"></div>
+                <div class="pixel-dot pixel-pink"></div>
+                <div class="pixel-dot pixel-pink"></div>
+                <div class="pixel-dot pixel-blue"></div>
+                <div class="像素-dot pixel-blue"></div>
+                <div class="像素-dot pixel-pink"></div>
+                <div class="像素-dot pixel-pink"></div>
+                <div class="像素-dot pixel-blue"></div>
+                <div class="像素-dot pixel-blue"></div>
+              </div>
+              <span class="username color-yellow">Ghost_F4A2</span>
+              <span class="timestamp">23:58:01</span>
+            </div>
+            <div class="msg-content">有人破解过这个聊天室的加密协议吗？</div>
+          </div>
+          
+          <div class="msg-bubble user-msg">
+            <div class="msg-header">
+              <div class="pixel-avatar">
+                <div class="pixel-dot pixel-black"></div>
+                <div class="pixel-dot pixel-green"></div>
+                <div class="pixel-dot pixel-green"></div>
+                <div class="pixel-dot pixel-black"></div>
+                <div class="pixel-dot pixel-green"></div>
+                <div class="pixel-dot pixel-purple"></div>
+                <div class="pixel-dot pixel-purple"></div>
+                <div class="pixel-dot pixel-green"></div>
+                <div class="pixel-dot pixel-purple"></div>
+                <div class="pixel-dot pixel-black"></div>
+                <div class="pixel-dot pixel-black"></div>
+                <div class="pixel-dot pixel-purple"></div>
+                <div class="pixel-dot pixel-black"></div>
+                <div class="pixel-dot pixel-green"></div>
+                <div class="pixel-dot pixel-green"></div>
+                <div class="pixel-dot pixel-black"></div>
+              </div>
+              <span class="username color-purple">Hacker_C8F0</span>
+              <span class="timestamp">23:58:31</span>
+            </div>
+            <div class="msg-content">这个系统使用军用级加密算法，破解可能性0.4%</div>
+          </div>
+          
+          <div class="msg-bubble">
+            <div class="msg-header">
+              <span class="iconify" data-icon="mdi:console" style="color: #00ff41; margin-right: 10px;"></span>
+              <span class="username color-green" style="font-style: oblique;">SYSTEM</span>
+              <span class="timestamp">23:58:45</span>
+            </div>
+            <div class="msg-content color-green">User_Player_9D1E has entered the chat</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 右侧边栏 -->
+      <div class="sidebar">
+        <div class="user-list">
+          <h3 class="color-blue">在线用户 (5)</h3>
+          <div class="user-item">
+            <div class="pixel-avatar">
+              <div class="pixel-dot pixel-blue"></div>
+              <div class="pixel-dot pixel-blue"></div>
+              <div class="pixel-dot pixel-pink"></div>
+              <div class="pixel-dot pixel-pink"></div>
+              <div class="pixel-dot pixel-blue"></div>
+              <div class="pixel-dot pixel-blue"></div>
+              <div class="pixel-dot pixel-pink"></div>
+              <div class="pixel-dot pixel-pink"></div>
+              <div class="pixel-dot pixel-pink"></div>
+              <div class="pixel-dot pixel-pink"></div>
+              <div class="pixel-dot pixel-blue"></div>
+              <div class="pixel-dot pixel-blue"></div>
+              <div class="pixel-dot pixel-pink"></div>
+              <div class="pixel-dot pixel-pink"></div>
+              <div class="pixel-dot pixel-blue"></div>
+              <div class="pixel-dot pixel-blue"></div>
+            </div>
+            <span class="color-yellow">Ghost_F4A2</span>
+          </div>
+          <div class="user-item">
+            <div class="pixel-avatar">
+              <div class="pixel-dot pixel-black"></div>
+              <div class="pixel-dot pixel-green"></div>
+              <div class="pixel-dot pixel-green"></div>
+              <div class="pixel-dot pixel-black"></div>
+              <div class="pixel-dot pixel-green"></div>
+              <div class="pixel-dot pixel-purple"></div>
+              <div class="pixel-dot pixel-purple"></div>
+              <div class="pixel-dot pixel-green"></div>
+              <div class="pixel-dot pixel-purple"></div>
+              <div class="pixel-dot pixel-black"></div>
+              <div class="pixel-dot pixel-black"></div>
+              <div class="pixel-dot pixel-purple"></div>
+              <div class="pixel-dot pixel-black"></div>
+              <div class="pixel-dot pixel-green"></div>
+              <div class="pixel-dot pixel-green"></div>
+              <div class="pixel-dot pixel-black"></div>
+            </div>
+            <span class="color-purple">Hacker_C8F0</span>
+          </div>
+          <div class="user-item">
+            <div class="pixel-avatar">
+              <div class="pixel-dot pixel-yellow"></div>
+              <div class="pixel-dot pixel-yellow"></div>
+              <div class="pixel-dot pixel-black"></div>
+              <div class="pixel-dot pixel-black"></div>
+              <div class="pixel-dot pixel-yellow"></div>
+              <div class="pixel-dot pixel-pink"></div>
+              <div class="pixel-dot pixel-pink"></div>
+              <div class="pixel-dot pixel-yellow"></div>
+              <div class="pixel-dot pixel-yellow"></div>
+              <div class="pixel-dot pixel-pink"></div>
+              <div class="pixel-dot pixel-pink"></div>
+              <div class="pixel-dot pixel-black"></div>
+              <div class="pixel-dot pixel-black"></div>
+              <div class="pixel-dot pixel-yellow"></div>
+              <div class="pixel-dot pixel-yellow"></div>
+              <div class="pixel-dot pixel-black"></div>
+            </div>
+            <span class="color-pink">Cyber_3E7B</span>
+          </div>
+        </div>
+        
+        <div class="room-info">
+          <h3 class="color-green">房间信息</h3>
+          <p><span class="color-blue">ID:</span> 0x5A7F289B</p>
+          <p><span class="color-blue">创建时间:</span> 2023-08-15 19:23:44</p>
+          <p><span class="color-blue">加密协议:</span> XChaCha20-Poly1305</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 底部输入区 -->
+    <div class="input-area">
+      <input type="text" class="terminal-input" placeholder="Enter message...">
+      <button class="send-btn">[SEND]</button>
+      <div class="hint">Press Enter to send</div>
+    </div>
+  </div>
+
+  <script>
+    // 自动滚动到最新消息
+    const messageContainer = document.querySelector('.chat-messages');
+    messageContainer.scrollTop = messageContainer.scrollHeight;
+    
+    // 光标闪烁效果
+    const inputField = document.querySelector('.terminal-input');
+    setInterval(() => {
+      inputField.style.borderColor = inputField.style.borderColor === 'rgb(0, 255, 65)' ? 'transparent' : '#00ff41';
+    }, 500);
+    
+    // 发送消息功能示例
+    const sendBtn = document.querySelector('.send-btn');
+    sendBtn.addEventListener('click', sendMessage);
+    
+    inputField.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+    
+    function sendMessage() {
+      if (inputField.value.trim()) {
+        const message = inputField.value;
+        inputField.value = '';
+        
+        // 创建新消息元素
+        const newMessage = document.createElement('div');
+        newMessage.className = 'msg-bubble other-msg';
+        newMessage.innerHTML = `
+          <div class="msg-header">
+            <div class="pixel-avatar">
+              <div class="pixel-dot pixel-yellow"></div>
+              <div class="pixel-dot pixel-yellow"></div>
+              <div class="pixel-dot pixel-pink"></div>
+              <div class="pixel-dot pixel-pink"></div>
+              <div class="pixel-dot pixel-blue"></div>
+              <div class="pixel-dot pixel-green"></div>
+              <div class="pixel-dot pixel-black"></div>
+              <div class="pixel-dot pixel-purple"></div>
+              <div class="pixel-dot pixel-purple"></div>
+              <div class="pixel-dot pixel-black"></div>
+              <div class="pixel-dot pixel-green"></div>
+              <div class="pixel-dot pixel-blue"></div>
+              <div class="pixel-dot pixel-yellow"></div>
+              <div class="pixel-dot pixel-yellow"></div>
+              <div class="pixel-dot pixel-pink"></div>
+              <div class="pixel-dot pixel-pink"></div>
+            </div>
+            <span class="username color-yellow">Player_${Math.floor(Math.random()*9000+1000).toString(16).toUpperCase()}</span>
+            <span class="timestamp">${new Date().toLocaleTimeString().slice(0,5)}</span>
+          </div>
+          <div class="msg-content">${message}</div>
+        `;
+        
+        // 添加到消息区
+        messageContainer.insertBefore(newMessage, messageContainer.firstChild);
+        messageContainer.scrollTop = 0;
+      }
+    }
+  </script>
+</body>
+</html>
