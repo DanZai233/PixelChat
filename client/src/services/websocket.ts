@@ -102,12 +102,10 @@ class WebSocketService {
   }
 
   join(nickname?: string): void {
-    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      this.send({
-        type: 'join',
-        data: { nickname }
-      });
-    }
+    this.send({
+      type: 'join',
+      data: { nickname }
+    });
   }
 
   sendMessage(content: string): void {
@@ -122,15 +120,13 @@ class WebSocketService {
   }
 
   ping(): void {
-    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      this.send({
-        type: 'ping',
-        data: null
-      });
-    }
+    this.send({
+      type: 'ping',
+      data: null
+    });
   }
 
-  private send(message: any): void {
+  send(message: any): void {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify(message));
     }

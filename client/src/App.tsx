@@ -173,8 +173,8 @@ const App: React.FC = () => {
     if (savedUser && savedNickname) {
       try {
         const user = JSON.parse(savedUser);
-        setCurrentUser(user);
         setNickname(savedNickname);
+        // 不直接设置currentUser，而是等待WebSocket连接后重新加入
         setShowWelcome(false);
       } catch (error) {
         console.error('恢复用户状态失败:', error);
@@ -190,6 +190,13 @@ const App: React.FC = () => {
     websocketService.on('connected', () => {
       setIsConnected(true);
       setError(null);
+      
+      // 如果有保存的昵称，自动重新加入聊天室
+      const savedNickname = localStorage.getItem('pixel-chat-nickname');
+      if (savedNickname && !currentUser) {
+        console.log('自动重新加入聊天室...');
+        websocketService.join(savedNickname);
+      }
     });
 
     websocketService.on('disconnected', () => {
@@ -203,8 +210,14 @@ const App: React.FC = () => {
       setShowWelcome(false);
       setError(null);
       
-      // 保存用户状态到localStorage
-      localStorage.setItem('pixel-chat-user', JSON.stringify(data.user));
+      // 保存用户状态到localStorage（只保存必要信息，不包含socketID）
+      const userToSave = {
+        id: data.user.id,
+        nickname: data.user.nickname,
+        avatar: data.user.avatar,
+        joinTime: data.user.join_time
+      };
+      localStorage.setItem('pixel-chat-user', JSON.stringify(userToSave));
       localStorage.setItem('pixel-chat-nickname', nickname);
     });
 
@@ -238,7 +251,7 @@ const App: React.FC = () => {
     return () => {
       websocketService.disconnect();
     };
-  }, [nickname]);
+  }, [nickname, currentUser]);
 
   useEffect(() => {
     // 自动滚动到最新消息
@@ -267,6 +280,15 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
+    // 先通知后端用户离开（如果连接正常）
+    if (isConnected && currentUser) {
+      // 发送离开消息给后端
+      websocketService.send({
+        type: 'leave',
+        data: {}
+      });
+    }
+    
     // 清除用户状态
     localStorage.removeItem('pixel-chat-user');
     localStorage.removeItem('pixel-chat-nickname');
@@ -275,7 +297,11 @@ const App: React.FC = () => {
     setUsers([]);
     setShowWelcome(true);
     setNickname('');
-    websocketService.disconnect();
+    
+    // 延迟断开连接，确保离开消息能够发送
+    setTimeout(() => {
+      websocketService.disconnect();
+    }, 100);
   };
 
   const formatTime = () => {

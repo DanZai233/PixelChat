@@ -189,6 +189,8 @@ func (c *Client) handleMessage(messageBytes []byte) {
 		c.handleJoin(wsMessage.Data)
 	case "send_message":
 		c.handleSendMessage(wsMessage.Data)
+	case "leave":
+		c.handleLeave()
 	case "ping":
 		c.handlePing()
 	}
@@ -244,6 +246,24 @@ func (c *Client) handleSendMessage(data interface{}) {
 	// 广播新消息
 	newMessageEvent := models.NewMessageEvent{Message: message}
 	c.hub.broadcastMessage("new_message", newMessageEvent)
+}
+
+// handleLeave 处理用户离开
+func (c *Client) handleLeave() {
+	// 从用户服务中移除用户
+	user := c.hub.chatService.RemoveUser(c.socketID)
+	if user != nil {
+		// 广播用户离开事件
+		userLeftEvent := models.UserLeftEvent{User: user}
+		c.hub.broadcastMessage("user_left", userLeftEvent)
+
+		// 广播用户列表更新
+		userListEvent := models.UserListEvent{Users: c.hub.chatService.GetOnlineUsers()}
+		c.hub.broadcastMessage("user_list", userListEvent)
+	}
+
+	// 关闭连接
+	c.conn.Close()
 }
 
 // handlePing 处理ping消息
