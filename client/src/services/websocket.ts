@@ -1,3 +1,5 @@
+// 类型定义在handleMessage方法中使用，但TypeScript需要导入
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { 
   JoinResponse,
   UserJoinedEvent,
