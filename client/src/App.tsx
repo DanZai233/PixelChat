@@ -172,33 +172,12 @@ const App: React.FC = () => {
   }, [currentUser]);
 
   useEffect(() => {
-    // 从localStorage恢复用户状态
-    const savedUser = localStorage.getItem('pixel-chat-user');
-    const savedNickname = localStorage.getItem('pixel-chat-nickname');
-    
-    if (savedUser && savedNickname) {
-      try {
-        // 验证保存的用户数据格式
-        const userData = JSON.parse(savedUser);
-        // 检查必要字段是否存在
-        if (userData.id && userData.nickname && userData.avatar) {
-          setNickname(savedNickname);
-          // 不直接设置currentUser，而是等待WebSocket连接后重新加入
-          setShowWelcome(false);
-          console.log('从localStorage恢复用户状态:', { nickname: savedNickname, userData });
-        } else {
-          throw new Error('用户数据格式不完整');
-        }
-      } catch (error) {
-        console.error('恢复用户状态失败:', error);
-        localStorage.removeItem('pixel-chat-user');
-        localStorage.removeItem('pixel-chat-nickname');
-        setShowWelcome(true);
-      }
-    } else {
-      // 没有保存的数据，显示欢迎界面
-      setShowWelcome(true);
-    }
+    // 每次打开都显示欢迎界面，需要重新输入用户名
+    setShowWelcome(true);
+    setCurrentUser(null);
+    setMessages([]);
+    setUsers([]);
+    setNickname('');
 
     // 连接WebSocket
     websocketService.connect();
@@ -207,24 +186,7 @@ const App: React.FC = () => {
     websocketService.on('connected', () => {
       setIsConnected(true);
       setError(null);
-      
-      // 如果有保存的昵称且当前没有用户，自动重新加入聊天室
-      const savedNickname = localStorage.getItem('pixel-chat-nickname');
-      const savedUser = localStorage.getItem('pixel-chat-user');
-      console.log('WebSocket连接成功，检查自动重新加入:', { 
-        savedNickname, 
-        savedUser: !!savedUser,
-        currentUser: !!currentUserRef.current,
-        showWelcome 
-      });
-      
-      if (savedNickname && savedUser && !currentUserRef.current && !showWelcome) {
-        console.log('自动重新加入聊天室，昵称:', savedNickname);
-        // 延迟一点时间确保连接完全建立
-        setTimeout(() => {
-          websocketService.join(savedNickname);
-        }, 200);
-      }
+      console.log('WebSocket连接成功');
     });
 
     websocketService.on('disconnected', () => {
@@ -237,16 +199,7 @@ const App: React.FC = () => {
       setMessages(data.messages);
       setShowWelcome(false);
       setError(null);
-      
-      // 保存用户状态到localStorage（只保存必要信息，不包含socketID）
-      const userToSave = {
-        id: data.user.id,
-        nickname: data.user.nickname,
-        avatar: data.user.avatar,
-        joinTime: data.user.join_time
-      };
-      localStorage.setItem('pixel-chat-user', JSON.stringify(userToSave));
-      localStorage.setItem('pixel-chat-nickname', data.user.nickname);
+      console.log('成功加入聊天室:', data.user.nickname);
     });
 
     websocketService.on('new_message', (data: NewMessageEvent) => {
@@ -264,24 +217,13 @@ const App: React.FC = () => {
 
     websocketService.on('error', (data: ErrorEvent) => {
       setError(data.message);
-      
-      // 如果是用户不存在错误，尝试自动重新加入
-      if (data.message.includes('用户不存在')) {
-        console.log('检测到用户不存在错误，尝试重新加入聊天室...');
-        const savedNickname = localStorage.getItem('pixel-chat-nickname');
-        setTimeout(() => {
-          if (savedNickname && isConnected) {
-            console.log('自动重新加入聊天室，昵称:', savedNickname);
-            websocketService.join(savedNickname);
-          }
-        }, 1000);
-      }
+      console.error('WebSocket错误:', data.message);
     });
 
     return () => {
       websocketService.disconnect();
     };
-  }, [nickname, isConnected, showWelcome]);
+  }, []);
 
   useEffect(() => {
     // 自动滚动到最新消息
@@ -320,8 +262,6 @@ const App: React.FC = () => {
     }
     
     // 清除用户状态
-    localStorage.removeItem('pixel-chat-user');
-    localStorage.removeItem('pixel-chat-nickname');
     setCurrentUser(null);
     setMessages([]);
     setUsers([]);
