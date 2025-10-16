@@ -47,7 +47,7 @@ func (s *ChatService) RemoveUser(socketID string) *models.User {
 func (s *ChatService) SendMessage(socketID string, content string) (*models.Message, error) {
 	user, exists := s.userService.GetUser(socketID)
 	if !exists {
-		return nil, fmt.Errorf("用户不存在")
+		return nil, fmt.Errorf("用户不存在，请重新加入聊天室")
 	}
 
 	// 更新用户活动时间

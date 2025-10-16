@@ -116,6 +116,8 @@ class WebSocketService {
         type: 'send_message',
         data: { content }
       });
+    } else {
+      console.warn('WebSocket未连接，无法发送消息');
     }
   }
 

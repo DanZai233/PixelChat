@@ -74,6 +74,18 @@ func (h *Hub) Run() {
 				delete(h.clients, client)
 				close(client.send)
 				log.Printf("客户端断开: %s", client.socketID)
+
+				// 从用户服务中移除用户
+				user := h.chatService.RemoveUser(client.socketID)
+				if user != nil {
+					// 广播用户离开事件
+					userLeftEvent := models.UserLeftEvent{User: user}
+					h.broadcastMessage("user_left", userLeftEvent)
+
+					// 广播用户列表更新
+					userListEvent := models.UserListEvent{Users: h.chatService.GetOnlineUsers()}
+					h.broadcastMessage("user_list", userListEvent)
+				}
 			}
 
 		case message := <-h.broadcast:

@@ -223,6 +223,16 @@ const App: React.FC = () => {
 
     websocketService.on('error', (data: ErrorEvent) => {
       setError(data.message);
+      
+      // 如果是用户不存在错误，尝试自动重新加入
+      if (data.message.includes('用户不存在')) {
+        console.log('检测到用户不存在错误，尝试重新加入聊天室...');
+        setTimeout(() => {
+          if (currentUser && nickname) {
+            websocketService.join(nickname);
+          }
+        }, 1000);
+      }
     });
 
     return () => {
